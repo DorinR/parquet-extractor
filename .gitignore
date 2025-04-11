@@ -63,6 +63,7 @@ coverage.xml
 extracted_papers/
 output/
 data/
+cisi_papers/
 
 # Logs
 *.log
