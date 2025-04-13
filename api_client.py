@@ -54,9 +54,43 @@ def download_file(api_base, filename, output_dir, save_path=None):
     else:
         return response.json()
 
+def extract_wikir(api_base, output_dir='wikir_pdfs', dataset_name='wikir/en1k/validation', limit=100):
+    data = {
+        'output_dir': output_dir,
+        'dataset_name': dataset_name
+    }
+    
+    if limit is not None:
+        data['limit'] = str(limit)
+    
+    response = requests.post(f"{api_base}/api/extract/wikir", data=data)
+    return response.json()
+
+def analyze_wikir(api_base, dataset_name='wikir/en1k/validation', limit=None):
+    """
+    Analyze wikir dataset and count tokens in all documents.
+    
+    Args:
+        api_base (str): Base URL for the API
+        dataset_name (str): Name of the ir-datasets dataset
+        limit (int): Maximum number of documents to analyze (None for all)
+        
+    Returns:
+        dict: Response from the API
+    """
+    data = {
+        'dataset_name': dataset_name
+    }
+    
+    if limit is not None:
+        data['limit'] = str(limit)
+    
+    response = requests.post(f"{api_base}/api/analyze/wikir", data=data)
+    return response.json()
+
 def main():
     parser = argparse.ArgumentParser(description='API client for Papers Python Extractor')
-    parser.add_argument('--api_base', type=str, default='http://localhost:4000',
+    parser.add_argument('--api_base', type=str, default='http://localhost:5000',
                         help='Base URL for the API server')
     
     # Add subcommands
@@ -99,6 +133,26 @@ def main():
     download_parser.add_argument('--output_dir', type=str, required=True,
                                 help='Output directory where the file is located')
     download_parser.add_argument('--save_path', type=str, help='Path to save the file locally')
+    
+    # Extract wikir
+    wikir_parser = subparsers.add_parser('wikir', help='Extract documents from wikir dataset and convert to PDF')
+    wikir_parser.add_argument('--output_dir', type=str, default='wikir_pdfs',
+                             help='Output directory')
+    wikir_parser.add_argument('--dataset_name', type=str, default='wikir/en1k/validation',
+                             help='Name of the ir-datasets dataset to use')
+    wikir_parser.add_argument('--limit', type=int, default=100,
+                             help='Maximum number of documents to extract (default: 100, max: 500)')
+    wikir_parser.add_argument('--wait', action='store_true',
+                            help='Wait for the job to complete')
+    
+    # Analyze wikir
+    analyze_parser = subparsers.add_parser('analyze-wikir', help='Analyze wikir dataset and count tokens')
+    analyze_parser.add_argument('--dataset_name', type=str, default='wikir/en1k/validation',
+                               help='Name of the ir-datasets dataset to analyze')
+    analyze_parser.add_argument('--limit', type=int,
+                               help='Maximum number of documents to analyze (default: all documents)')
+    analyze_parser.add_argument('--wait', action='store_true',
+                               help='Wait for the job to complete')
     
     args = parser.parse_args()
     
@@ -164,6 +218,54 @@ def main():
             args.save_path
         )
         print(result)
+    
+    elif args.command == 'wikir':
+        result = extract_wikir(
+            args.api_base,
+            args.output_dir,
+            args.dataset_name,
+            args.limit
+        )
+        job_id = result.get('job_id')
+        print(f"Job started: {result}")
+        
+        if args.wait and job_id:
+            print("Waiting for job to complete...")
+            while True:
+                status = get_job_status(args.api_base, job_id)
+                print(f"Status: {status['status']}")
+                if status['status'] in ['completed', 'failed']:
+                    print(f"Final status: {status}")
+                    break
+                time.sleep(2)
+    
+    elif args.command == 'analyze-wikir':
+        result = analyze_wikir(
+            args.api_base,
+            args.dataset_name,
+            args.limit
+        )
+        job_id = result.get('job_id')
+        print(f"Analysis job started: {result}")
+        
+        if args.wait and job_id:
+            print("Waiting for analysis to complete...")
+            while True:
+                status = get_job_status(args.api_base, job_id)
+                print(f"Status: {status['status']}")
+                if status['status'] in ['completed', 'failed']:
+                    print(f"Final status: {status}")
+                    if status['status'] == 'completed' and 'result' in status:
+                        result = status['result']
+                        print("\nToken Analysis Results:")
+                        print(f"Dataset: {result['dataset']}")
+                        print(f"Document count: {result['document_count']}")
+                        print(f"Total tokens: {result['total_tokens']:,}")
+                        print(f"Average tokens per document: {result['average_tokens_per_doc']:.2f}")
+                        print(f"Min tokens in a document: {result['min_tokens']}")
+                        print(f"Max tokens in a document: {result['max_tokens']}")
+                    break
+                time.sleep(2)
     
     else:
         parser.print_help()

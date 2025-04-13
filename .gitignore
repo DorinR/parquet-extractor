@@ -64,7 +64,8 @@ extracted_papers/
 output/
 data/
 cisi_papers/
-
+wikir_pdfs/
+ww2_articles/
 # Logs
 *.log
 logs/ 

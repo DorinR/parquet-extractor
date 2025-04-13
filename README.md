@@ -133,6 +133,27 @@ Parameters:
 - `file`: The CISI file to process (multipart/form-data)
 - `output_dir`: Output directory (optional, default: "cisi_papers")
 
+#### Extract Wikir Documents to PDF
+```
+POST /api/extract/wikir
+```
+Extract documents from the ir-datasets wikir collection and convert them to PDF.
+
+Parameters:
+- `output_dir`: Output directory (optional, default: "wikir_pdfs")
+- `dataset_name`: Name of the ir-datasets dataset (optional, default: "wikir/en1k/validation")
+- `limit`: Maximum number of documents to extract (optional, default: 100, max: 500)
+
+#### Analyze Wikir Dataset
+```
+POST /api/analyze/wikir
+```
+Analyze the wikir dataset and count tokens in all documents.
+
+Parameters:
+- `dataset_name`: Name of the ir-datasets dataset (optional, default: "wikir/en1k/validation")
+- `limit`: Maximum number of documents to analyze (optional, default: all documents)
+
 #### List Jobs
 ```
 GET /api/jobs
@@ -193,6 +214,18 @@ python api_client.py parquet /path/to/papers.parquet --output_dir my_papers --nu
 
 # Convert CISI file to markdown
 python api_client.py cisi /path/to/cisi.all --output_dir cisi_papers --wait
+
+# Extract wikir documents to PDF (limited to 50 documents)
+python api_client.py wikir --output_dir wikir_pdfs --dataset_name wikir/en1k/validation --limit 50 --wait
+
+# To extract just 10 documents
+python api_client.py wikir --output_dir wikir_pdfs --limit 10 --wait
+
+# Analyze the wikir dataset and count tokens
+python api_client.py analyze-wikir --dataset_name wikir/en1k/validation --wait
+
+# Analyze a limited number of documents
+python api_client.py analyze-wikir --limit 1000 --wait
 
 # Check job status
 python api_client.py job <job_id>
